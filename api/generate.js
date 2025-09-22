@@ -22,7 +22,7 @@ export default async function handler(req, res) {
         }
 
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro-vision-latest' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-1.0-pro-vision' });
 
         const body = await req.json();
         const { prompt, rotation, images } = body;
