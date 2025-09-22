@@ -175,43 +175,26 @@
                         });
                     }));
 
-                    const payload = {
-                        contents: [{
-                            parts: [
-                                { text: `Generate a professional-style model photo of the subject(s) in the images. The model should have a white background with a very soft, subtle shadow. The model must be rotated by ${rotationAngle} degrees, to the left if negative and to the right if positive. Additional context: ${prompt}.` },
-                                ...base64Images.map(dataUrl => {
-                                    const mimeType = dataUrl.split(';')[0].split(':')[1];
-                                    const base64Data = dataUrl.split(',')[1];
-                                    return { inlineData: { mimeType, data: base64Data } };
-                                })
-                            ]
-                        }],
-                        generationConfig: {
-                            responseModalities: ['TEXT', 'IMAGE']
-                        },
-                    };
-
-                    const apiKey = "";
-                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${apiKey}`;
-
-                    const response = await fetch(apiUrl, {
+                    // Der Aufruf erfolgt nun an unsere eigene Serverless-Funktion
+                    const response = await fetch('/api/generate', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
+                        body: JSON.stringify({
+                            prompt: prompt,
+                            rotationAngle: rotationAngle,
+                            images: base64Images
+                        })
                     });
 
-                    const result = await response.json();
-                    const candidates = result?.candidates;
-
-                    if (!candidates || candidates.length === 0 || !candidates[0].content?.parts) {
-                        throw new Error('Fehler bei der API-Antwort: Keine gültigen Bilder gefunden.');
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || 'API-Fehler aufgetreten.');
                     }
-                    
-                    const generatedBase64 = candidates[0].content.parts.find(p => p.inlineData)?.inlineData?.data;
-                    const mimeType = candidates[0].content.parts.find(p => p.inlineData)?.inlineData?.mimeType;
 
-                    if (generatedBase64) {
-                        generatedImage.src = `data:${mimeType};base64,${generatedBase64}`;
+                    const result = await response.json();
+                    
+                    if (result.imageUrl) {
+                        generatedImage.src = result.imageUrl;
                         resultContainer.classList.remove('hidden');
                         updateButtons();
                     } else {
