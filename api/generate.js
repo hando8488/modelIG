@@ -10,9 +10,16 @@ export default async function (req) {
 
     try {
         // === 1. AUTHENTICATION ===
-        // Get application default credentials and an access token
+        // Explicitly load credentials from the environment variable.
+        const credentialsJson = process.env.GOOGLE_CREDENTIALS_JSON;
+        if (!credentialsJson) {
+            throw new Error('The GOOGLE_CREDENTIALS_JSON environment variable is not set or not available.');
+        }
+        const credentials = JSON.parse(credentialsJson);
+
         const auth = new GoogleAuth({
-            scopes: 'https://www.googleapis.com/auth/cloud-platform'
+            credentials,
+            scopes: 'https://www.googleapis.com/auth/cloud-platform',
         });
         const client = await auth.getClient();
         const accessToken = (await client.getAccessToken()).token;
