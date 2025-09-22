@@ -1,60 +1,70 @@
-import fetch from 'node-fetch';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { streamToWeb, blobToBase64 } from 'node-fetch';
+
+export const config = {
+    runtime: 'edge',
+};
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Methode nicht erlaubt.' });
-  }
-
-  try {
-    const { prompt, rotationAngle, images } = req.body;
-
-    if (!process.env.GEMINI_API_KEY) {
-      throw new Error('API-Schlüssel fehlt. Bitte setze die Umgebungsvariable "GEMINI_API_KEY".');
+    if (req.method !== 'POST') {
+        return new Response(JSON.stringify({ error: 'Nur POST-Anfragen sind erlaubt.' }), {
+            status: 405,
+            headers: { 'Content-Type': 'application/json' },
+        });
     }
 
-    const payload = {
-      contents: [{
-        parts: [{
-          text: `Generate a professional-style model photo of the subject(s) in the images. The model should have a white background with a very soft, subtle shadow. The model must be rotated by ${rotationAngle} degrees, to the left if negative and to the right if positive. Additional context: ${prompt}.`
-        }, ...images.map(dataUrl => {
-          const mimeType = dataUrl.split(';')[0].split(':')[1];
-          const base64Data = dataUrl.split(',')[1];
-          return {
+    try {
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (!apiKey) {
+            return new Response(JSON.stringify({ error: 'API-Schlüssel fehlt.' }), {
+                status: 500,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
+
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: 'gemini-pro-vision' });
+
+        const body = await req.json();
+        const { prompt, rotation, images } = body;
+        
+        // Prepare the text parts
+        const textPrompt = `Generate a realistic photo of a model based on the following instructions:
+
+        Instructions: ${prompt}
+        
+        Rotation: Rotate the model ${rotation} degrees.
+        `;
+
+        const imageParts = images.map(image => ({
             inlineData: {
-              mimeType,
-              data: base64Data
+                data: image.inlineData.data,
+                mimeType: image.inlineData.mimeType
             }
-          };
-        })]
-      }],
-      generationConfig: {
-        responseModalities: ['TEXT', 'IMAGE']
-      },
-    };
+        }));
 
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${process.env.GEMINI_API_KEY}`;
+        const finalParts = [{ text: textPrompt }, ...imageParts];
 
-    const apiResponse = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    });
+        const result = await model.generateContent({ contents: [{ parts: finalParts }] });
+        const response = await result.response;
+        const generatedImageBase64 = response.candidates[0].content.parts[0].inlineData.data;
 
-    const result = await apiResponse.json();
-    const generatedBase64 = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
-    const mimeType = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.mimeType;
+        if (!generatedImageBase64) {
+            return new Response(JSON.stringify({ error: 'Fehler bei der API-Antwort: Es wurde kein Bild generiert.' }), {
+                status: 500,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
 
-    if (!generatedBase64) {
-      throw new Error('Fehler bei der API-Antwort: Es wurde kein Bild generiert.');
+        return new Response(JSON.stringify({ image: generatedImageBase64 }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+        });
+    } catch (error) {
+        console.error('API-Fehler:', error);
+        return new Response(JSON.stringify({ error: 'Interner Serverfehler' }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+        });
     }
-
-    const imageUrl = `data:${mimeType};base64,${generatedBase64}`;
-    res.status(200).json({ imageUrl });
-
-  } catch (error) {
-    console.error('API-Fehler:', error);
-    res.status(500).json({ error: error.message || 'Interner Serverfehler' });
-  }
 }
