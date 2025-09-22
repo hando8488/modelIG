@@ -39,7 +39,7 @@ export default async function handler(req, res) {
         
         const finalParts = [{ text: textPrompt }, ...imageParts];
         
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro-vision:generateContent?key=${apiKey}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
         
         const response = await fetch(url, {
             method: 'POST',
