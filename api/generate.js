@@ -1,5 +1,4 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { streamToWeb, blobToBase64 } from 'node-fetch';
 
 export const config = {
     runtime: 'edge',
