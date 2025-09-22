@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interaktiver Model-Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .container {
+            max-width: 800px;
+            min-height: 100vh;
+        }
+        .file-upload-wrapper {
+            @apply flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-4 cursor-pointer hover:border-blue-500 transition-colors;
+        }
+        .file-upload-label {
+            @apply text-sm text-gray-500 mt-2;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 sm:p-8 flex items-center justify-center">
+    <div class="container mx-auto bg-white rounded-2xl shadow-xl p-6 sm:p-10 flex flex-col items-center text-center">
+        <h1 class="text-3xl sm:text-4xl font-bold text-gray-800 mb-2">Interaktiver Model-Generator</h1>
+        <p class="text-gray-600 mb-6 sm:mb-8">Generiere professionelle Model-Fotos, drehe das Model in Echtzeit.</p>
+
+        <!-- Prompt-Eingabe -->
+        <div class="w-full mb-6">
+            <label for="prompt" class="block text-left text-sm font-medium text-gray-700 mb-2">Prompt (z.B. "Ein Mann mit einem stilvollen Hemd")</label>
+            <textarea id="prompt" rows="3" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"></textarea>
+        </div>
+
+        <!-- Bild-Upload-Bereich -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full mb-6">
+            <!-- Bild 1 -->
+            <div class="file-upload-wrapper">
+                <input type="file" id="image1" class="hidden" accept="image/*">
+                <label for="image1" class="file-upload-label">
+                    <span class="text-blue-500 font-semibold">Bild 1</span> hochladen
+                </label>
+                <img id="preview1" class="w-24 h-24 object-cover rounded-md mt-2 hidden" alt="Vorschau Bild 1">
+            </div>
+            <!-- Bild 2 -->
+            <div class="file-upload-wrapper">
+                <input type="file" id="image2" class="hidden" accept="image/*">
+                <label for="image2" class="file-upload-label">
+                    <span class="text-blue-500 font-semibold">Bild 2</span> hochladen
+                </label>
+                <img id="preview2" class="w-24 h-24 object-cover rounded-md mt-2 hidden" alt="Vorschau Bild 2">
+            </div>
+            <!-- Bild 3 -->
+            <div class="file-upload-wrapper">
+                <input type="file" id="image3" class="hidden" accept="image/*">
+                <label for="image3" class="file-upload-label">
+                    <span class="text-blue-500 font-semibold">Bild 3</span> hochladen
+                </label>
+                <img id="preview3" class="w-24 h-24 object-cover rounded-md mt-2 hidden" alt="Vorschau Bild 3">
+            </div>
+        </div>
+
+        <!-- Generierungs-Button -->
+        <button id="generateBtn" class="w-full sm:w-auto px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+            Model generieren
+        </button>
+
+        <!-- Lade-Indikator -->
+        <div id="loadingIndicator" class="mt-8 hidden">
+            <div class="animate-spin rounded-full h-12 w-12 border-4 border-dashed border-blue-500"></div>
+            <p id="loadingText" class="mt-4 text-gray-600">Generiere dein Model...</p>
+        </div>
+
+        <!-- Ergebnis-Anzeige -->
+        <div id="resultContainer" class="mt-8 hidden w-full">
+            <div class="relative w-full">
+                <img id="generatedImage" class="w-full h-auto rounded-lg shadow-lg border border-gray-200">
+                
+                <!-- Rotations-Buttons -->
+                <button id="prevBtn" class="absolute top-1/2 left-2 transform -translate-y-1/2 p-3 bg-gray-800 bg-opacity-50 text-white rounded-full hover:bg-opacity-75 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                    </svg>
+                </button>
+                <button id="nextBtn" class="absolute top-1/2 right-2 transform -translate-y-1/2 p-3 bg-gray-800 bg-opacity-50 text-white rounded-full hover:bg-opacity-75 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Fehlermeldungen -->
+        <div id="messageBox" class="mt-8 p-4 bg-red-100 text-red-700 rounded-lg hidden w-full"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const promptInput = document.getElementById('prompt');
+            const fileInputs = [
+                document.getElementById('image1'),
+                document.getElementById('image2'),
+                document.getElementById('image3')
+            ];
+            const previews = [
+                document.getElementById('preview1'),
+                document.getElementById('preview2'),
+                document.getElementById('preview3')
+            ];
+            const generateBtn = document.getElementById('generateBtn');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const loadingText = document.getElementById('loadingText');
+            const resultContainer = document.getElementById('resultContainer');
+            const generatedImage = document.getElementById('generatedImage');
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            const messageBox = document.getElementById('messageBox');
+            
+            let currentRotationAngle = 0; // In Grad
+            const ROTATION_STEP = 15; // 15 Grad pro Klick
+
+            // Anzeige von Nachrichten
+            function showMessage(message, isError = false) {
+                messageBox.textContent = message;
+                messageBox.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700');
+                if (isError) {
+                    messageBox.classList.add('bg-red-100', 'text-red-700');
+                } else {
+                    messageBox.classList.add('bg-green-100', 'text-green-700');
+                }
+            }
+            
+            // Preview-Funktion für Bild-Uploads
+            fileInputs.forEach((input, index) => {
+                input.addEventListener('change', () => {
+                    const file = input.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            previews[index].src = e.target.result;
+                            previews[index].classList.remove('hidden');
+                        };
+                        reader.readAsDataURL(file);
+                    } else {
+                        previews[index].classList.add('hidden');
+                        previews[index].src = '';
+                    }
+                });
+            });
+
+            // Generierungs-Logik
+            const generateImage = async (rotationAngle) => {
+                const prompt = promptInput.value;
+                const files = fileInputs.map(input => input.files[0]);
+
+                if (!prompt || files.some(file => !file)) {
+                    showMessage('Bitte gib einen Prompt ein und lade alle 3 Bilder hoch.', true);
+                    return;
+                }
+
+                loadingIndicator.classList.remove('hidden');
+                resultContainer.classList.add('hidden');
+                messageBox.classList.add('hidden');
+                loadingText.textContent = `Generiere Model-Foto mit Drehung ${rotationAngle}°...`;
+                
+                try {
+                    const base64Images = await Promise.all(files.map(file => {
+                        return new Promise((resolve, reject) => {
+                            const reader = new FileReader();
+                            reader.onloadend = () => resolve(reader.result);
+                            reader.onerror = reject;
+                            reader.readAsDataURL(file);
+                        });
+                    }));
+
+                    const payload = {
+                        contents: [{
+                            parts: [
+                                { text: `Generate a professional-style model photo of the subject(s) in the images. The model should have a white background with a very soft, subtle shadow. The model must be rotated by ${rotationAngle} degrees, to the left if negative and to the right if positive. Additional context: ${prompt}.` },
+                                ...base64Images.map(dataUrl => {
+                                    const mimeType = dataUrl.split(';')[0].split(':')[1];
+                                    const base64Data = dataUrl.split(',')[1];
+                                    return { inlineData: { mimeType, data: base64Data } };
+                                })
+                            ]
+                        }],
+                        generationConfig: {
+                            responseModalities: ['TEXT', 'IMAGE']
+                        },
+                    };
+
+                    const apiKey = "";
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${apiKey}`;
+
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const result = await response.json();
+                    const candidates = result?.candidates;
+
+                    if (!candidates || candidates.length === 0 || !candidates[0].content?.parts) {
+                        throw new Error('Fehler bei der API-Antwort: Keine gültigen Bilder gefunden.');
+                    }
+                    
+                    const generatedBase64 = candidates[0].content.parts.find(p => p.inlineData)?.inlineData?.data;
+                    const mimeType = candidates[0].content.parts.find(p => p.inlineData)?.inlineData?.mimeType;
+
+                    if (generatedBase64) {
+                        generatedImage.src = `data:${mimeType};base64,${generatedBase64}`;
+                        resultContainer.classList.remove('hidden');
+                        updateButtons();
+                    } else {
+                        throw new Error('Es wurde kein Bild generiert. Bitte versuche es erneut.');
+                    }
+
+                } catch (error) {
+                    console.error('Fehler:', error);
+                    showMessage(`Ein Fehler ist aufgetreten: ${error.message}`, true);
+                } finally {
+                    loadingIndicator.classList.add('hidden');
+                }
+            };
+
+            // Event-Listener für Haupt-Button
+            generateBtn.addEventListener('click', () => {
+                currentRotationAngle = 0;
+                generateImage(currentRotationAngle);
+            });
+
+            // Rotations-Logik
+            function updateButtons() {
+                prevBtn.disabled = currentRotationAngle <= -45;
+                nextBtn.disabled = currentRotationAngle >= 45;
+            }
+
+            prevBtn.addEventListener('click', () => {
+                if (currentRotationAngle > -45) {
+                    currentRotationAngle -= ROTATION_STEP;
+                    generateImage(currentRotationAngle);
+                }
+            });
+
+            nextBtn.addEventListener('click', () => {
+                if (currentRotationAngle < 45) {
+                    currentRotationAngle += ROTATION_STEP;
+                    generateImage(currentRotationAngle);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
