@@ -38,7 +38,7 @@ export default async function (req) {
         const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/${model}:predict`;
 
         // === 3. REQUEST PAYLOAD CONSTRUCTION ===
-        const body = await req.json();
+        const body = req.body;
         const { prompt, rotation, images } = body;
 
         if (!prompt) {
