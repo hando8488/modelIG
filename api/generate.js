@@ -2,7 +2,7 @@ export const config = {
     runtime: 'edge',
 };
 
-export default async function handler(req, res) {
+export default async function (req) {
     if (req.method !== 'POST') {
         return new Response(JSON.stringify({ error: 'Nur POST-Anfragen sind erlaubt.' }), {
             status: 405,
