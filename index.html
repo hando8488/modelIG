@@ -206,6 +206,12 @@
             <button id="generateBtn" class="button button-primary flex items-center justify-center mt-2">
                 Foto generieren
             </button>
+
+            <!-- Button zur Datumsanzeige -->
+            <button id="dateBtn" class="button button-secondary flex items-center justify-center mt-4">
+                Datum anzeigen
+            </button>
+            <p id="dateDisplay" class="text-center mt-2 text-gray-500"></p>
         </div>
 
         <!-- Ausgabebereich -->
@@ -252,6 +258,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const generatedImage = document.getElementById('generatedImage');
     const rotationButtons = document.getElementById('rotationButtons');
     const messageBox = document.getElementById('messageBox');
+    const dateBtn = document.getElementById('dateBtn');
+    const dateDisplay = document.getElementById('dateDisplay');
 
     let currentRotationAngle = 0;
     const rotationIncrement = 15;
@@ -420,6 +428,13 @@ document.addEventListener('DOMContentLoaded', () => {
             currentRotationAngle = rotationLimit;
         }
         generateImage(currentRotationAngle);
+    });
+
+    // Klick-Handler für den Datums-Button
+    dateBtn.addEventListener('click', () => {
+        const now = new Date();
+        const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+        dateDisplay.textContent = `Aktuelles Datum: ${now.toLocaleDateString('de-DE', options)}`;
     });
 });
 </script>
